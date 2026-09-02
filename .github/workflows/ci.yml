@@ -1,0 +1,20 @@
+name: MORPH CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: make clean && make
+
+      - name: Smoke test
+        run: bash scripts/smoke_test.sh
