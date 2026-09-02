@@ -1,7 +1,8 @@
 # MORPH v1.5
-# MORPH
 
-[![Tests](https://github.com/dcpracmatic-prog/MORPH/actions/workflows/ci.yml/badge.svg)](https://github.com/dcpracmatic-prog/MORPH/actions/workflows/ci.yml)
+
+ [![Tests](https://github.com/dcpracmatic-prog/MORPH/actions/workflows/ci.yml/badge.svg)](https://github.com/dcpracmatic-prog/MORPH/actions/workflows/ci.yml)
+
 
 **Maximum Independent Set — Low-Latency Heuristic Solver**
 MORPH v1.5 is a heuristic solver for the Maximum Independent Set (MIS) problem. Its core construction repeatedly selects a currently active vertex with minimum residual degree, adds it to the independent set, and removes that vertex and its active neighbors. The implementation uses CSR adjacency storage and a lazy min-heap.
@@ -63,3 +64,9 @@ Wall-clock equality is not equal CPU-cycle equality. The CP-SAT baseline is deli
 ## Scope
 
 MORPH is currently best described as a low-latency combinatorial heuristic for MIS. Claims of exactness, exponential speedups, quantum resistance, or universal superiority are outside the evidence in this repository.
+
+## License
+
+MORPH is licensed under the GNU General Public License v3.0.
+
+See [`LICENSE`](LICENSE) for the full license text.
