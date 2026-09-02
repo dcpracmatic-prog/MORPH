@@ -1,5 +1,9 @@
 # MORPH v1.5
+# MORPH
 
+[![Tests](https://github.com/dcpracmatic-prog/MORPH/actions/workflows/ci.yml/badge.svg)](https://github.com/dcpracmatic-prog/MORPH/actions/workflows/ci.yml)
+
+**Maximum Independent Set — Low-Latency Heuristic Solver**
 MORPH v1.5 is a heuristic solver for the Maximum Independent Set (MIS) problem. Its core construction repeatedly selects a currently active vertex with minimum residual degree, adds it to the independent set, and removes that vertex and its active neighbors. The implementation uses CSR adjacency storage and a lazy min-heap.
 
 This repository is intentionally focused: source, reproducibility scripts, small real datasets, and benchmark evidence. It does not claim a general-purpose exact-solver replacement.
@@ -16,8 +20,9 @@ This repository is intentionally focused: source, reproducibility scripts, small
 ## Build
 
 ```bash
+make clean
 make
-make test
+bash scripts/smoke_test.sh
 ```
 
 ## QOBLIB benchmark
