@@ -1,0 +1,9 @@
+*.o
+morph_v15
+morph_qoblib_solver
+__pycache__/
+*.pyc
+results/*.csv
+results/*.json
+results/*.md
+/content/QOBLIB/
