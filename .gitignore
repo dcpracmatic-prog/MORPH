@@ -1,9 +1,9 @@
 *.o
+*.pyc
+__pycache__/
 morph_v15
 morph_qoblib_solver
-__pycache__/
-*.pyc
-results/*.csv
-results/*.json
-results/*.md
+src/morph_v15
+src/morph_qoblib_solver
+results/
 /content/QOBLIB/
