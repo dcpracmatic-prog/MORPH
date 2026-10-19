@@ -21,20 +21,52 @@ struct Sol{int size=0; vector<uint8_t> x;};
 Sol greedy(const Graph&g, const vector<int>&order){ Sol s; s.x.assign(g.n,0); for(int v:order){bool ok=1; for(int p=g.off[v];p<g.off[v+1];p++) if(s.x[g.adj[p]]){ok=0;break;} if(ok){s.x[v]=1;s.size++;}} return s; }
 vector<int> degree_order(const Graph&g){vector<int> o(g.n); iota(o.begin(),o.end(),0); stable_sort(o.begin(),o.end(),[&](int a,int b){if(g.deg[a]!=g.deg[b])return g.deg[a]<g.deg[b];return a<b;});return o;}
 vector<int> random_degree_order(const Graph&g,uint64_t seed){vector<int> o(g.n);iota(o.begin(),o.end(),0); vector<uint32_t> key(g.n);for(int i=0;i<g.n;i++)key[i]=(uint32_t)splitmix64(seed+i); stable_sort(o.begin(),o.end(),[&](int a,int b){uint64_t sa=((uint64_t)g.deg[a]<<32)|key[a];uint64_t sb=((uint64_t)g.deg[b]<<32)|key[b];return sa<sb;});return o;}
-// Local search: try 1->2 exchanges using candidate neighbors; exact O(sum deg^2) worst-case, bounded by candidate cap.
-void improve12(const Graph&g, Sol&s, int maxv=5000){
- vector<int> cnt(g.n,0), cand; cand.reserve(maxv*8);
- for(int v=0;v<g.n;v++) if(!s.x[v]){
-   int blocked=0; for(int p=g.off[v];p<g.off[v+1];p++) if(s.x[g.adj[p]]) blocked++;
-   if(blocked==1) cand.push_back(v);
- }
- if((int)cand.size()>maxv) cand.resize(maxv);
- for(int v:cand){ if(s.x[v])continue; int u=-1; for(int p=g.off[v];p<g.off[v+1];p++) if(s.x[g.adj[p]]){u=g.adj[p];break;} if(u<0)continue;
-   vector<int> two; for(int p=g.off[v];p<g.off[v+1] && (int)two.size()<3;p++){int w=g.adj[p]; if(!s.x[w] && w!=u){bool ok=true; for(int q=g.off[w];q<g.off[w+1];q++){int z=g.adj[q];if(z==u||z==v)continue;if(s.x[z]){ok=false;break;}} if(ok) two.push_back(w);}}
-   if(two.size()>=1){ // Need two nonadjacent vertices, one is v and w; v already has only u selected, w must not neighbor v.
-     int w=two[0]; bool edge=false; for(int p=g.off[v];p<g.off[v+1];p++)if(g.adj[p]==w){edge=true;break;} if(!edge){s.x[u]=0;s.x[v]=1;s.x[w]=1;s.size++;}
-   }
- }
+// Local search: attempt a valid 1->2 exchange. Both unselected vertices must
+// have exactly one selected neighbor (the same u), and must not be adjacent.
+void improve12(const Graph& g, Sol& s, int maxv=5000) {
+    vector<int> candidates;
+    candidates.reserve(min(maxv, g.n));
+
+    for (int v = 0; v < g.n; ++v) {
+        if (s.x[v]) continue;
+        int selected = -1, count = 0;
+        for (int p = g.off[v]; p < g.off[v+1]; ++p) {
+            int u = g.adj[p];
+            if (s.x[u]) { selected = u; ++count; }
+            if (count > 1) break;
+        }
+        if (count == 1) candidates.push_back(v);
+    }
+    if ((int)candidates.size() > maxv) candidates.resize(maxv);
+
+    vector<vector<int>> by_selected(g.n);
+    for (int v : candidates) {
+        int u = -1, count = 0;
+        for (int p = g.off[v]; p < g.off[v+1]; ++p) {
+            int z = g.adj[p];
+            if (s.x[z]) { u = z; ++count; }
+        }
+        if (count == 1) by_selected[u].push_back(v);
+    }
+
+    vector<uint8_t> adjacent(g.n, 0);
+    for (int u = 0; u < g.n; ++u) {
+        if (by_selected[u].size() < 2) continue;
+        for (int v : by_selected[u]) {
+            for (int p = g.off[v]; p < g.off[v+1]; ++p)
+                adjacent[g.adj[p]] = 1;
+            for (int w : by_selected[u]) {
+                if (v == w || adjacent[w]) continue;
+                s.x[u] = 0;
+                s.x[v] = 1;
+                s.x[w] = 1;
+                ++s.size;
+                return; // One exchange per call; caller may invoke again.
+            }
+            for (int p = g.off[v]; p < g.off[v+1]; ++p)
+                adjacent[g.adj[p]] = 0;
+        }
+    }
 }
 Sol morph(const Graph&g, uint64_t seed, int ms){
  auto start=chrono::steady_clock::now(); auto deadline=start+chrono::milliseconds(ms);

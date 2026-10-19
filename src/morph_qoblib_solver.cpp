@@ -345,115 +345,45 @@ static Solution minres(
 // 1 -> 2 LOCAL IMPROVEMENT
 // ------------------------------------------------------------
 
-static void improve_1_to_2(
-    const Graph& g,
-    Solution& s
-)
+// Correct 1->2 local improvement. A valid exchange removes one selected
+// vertex u and adds two nonadjacent vertices v,w whose only selected neighbor
+// is u. The previous implementation searched w only among neighbors of v,
+// making the non-adjacency check reject every exchange.
+static void improve_1_to_2(const Graph& g, Solution& s)
 {
-    bool changed = true;
+    vector<vector<int>> candidates_by_u(g.n);
+    for (int v = 0; v < g.n; ++v) {
+        if (s.x[v]) continue;
+        int selected = -1, count = 0;
+        for (int p = g.off[v]; p < g.off[v+1]; ++p) {
+            int u = g.adj[p];
+            if (s.x[u]) { selected = u; ++count; }
+            if (count > 1) break;
+        }
+        if (count == 1) candidates_by_u[selected].push_back(v);
+    }
 
-    while (changed) {
-
-        changed = false;
-
-        for (int v = 0; v < g.n; ++v) {
-
-            if (s.x[v])
-                continue;
-
-            int selected_neighbor = -1;
-
-            for (
-                int p = g.off[v];
-                p < g.off[v+1];
-                ++p
-            ) {
-
-                int u = g.adj[p];
-
-                if (s.x[u]) {
-                    selected_neighbor = u;
-                    break;
+    vector<uint8_t> adjacent(g.n, 0);
+    for (int u = 0; u < g.n; ++u) {
+        const auto& candidates = candidates_by_u[u];
+        if (candidates.size() < 2) continue;
+        for (int v : candidates) {
+            for (int p = g.off[v]; p < g.off[v+1]; ++p)
+                adjacent[g.adj[p]] = 1;
+            for (int w : candidates) {
+                if (v != w && !adjacent[w]) {
+                    s.x[u] = 0;
+                    s.x[v] = 1;
+                    s.x[w] = 1;
+                    ++s.size;
+                    return;
                 }
             }
-
-            if (selected_neighbor < 0)
-                continue;
-
-            for (
-                int p = g.off[v];
-                p < g.off[v+1];
-                ++p
-            ) {
-
-                int w = g.adj[p];
-
-                if (w == selected_neighbor)
-                    continue;
-
-                if (s.x[w])
-                    continue;
-
-                bool ok = true;
-
-                for (
-                    int q = g.off[w];
-                    q < g.off[w+1];
-                    ++q
-                ) {
-
-                    int z = g.adj[q];
-
-                    if (z == selected_neighbor)
-                        continue;
-
-                    if (z == v)
-                        continue;
-
-                    if (s.x[z]) {
-                        ok = false;
-                        break;
-                    }
-                }
-
-                if (!ok)
-                    continue;
-
-                bool vw_adjacent = false;
-
-                for (
-                    int q = g.off[v];
-                    q < g.off[v+1];
-                    ++q
-                ) {
-
-                    if (g.adj[q] == w) {
-                        vw_adjacent = true;
-                        break;
-                    }
-                }
-
-                if (vw_adjacent)
-                    continue;
-
-                s.x[selected_neighbor] = 0;
-
-                s.x[v] = 1;
-                s.x[w] = 1;
-
-                s.size++;
-
-                changed = true;
-
-                break;
-            }
-
-            if (changed)
-                break;
+            for (int p = g.off[v]; p < g.off[v+1]; ++p)
+                adjacent[g.adj[p]] = 0;
         }
     }
 }
-
 
 // ------------------------------------------------------------
 // TIME-BUDGETED MORPH

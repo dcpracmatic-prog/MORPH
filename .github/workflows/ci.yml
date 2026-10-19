@@ -13,8 +13,5 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Build
-        run: make clean && make
-
-      - name: Smoke test
-        run: bash scripts/smoke_test.sh
+      - name: Build and regression tests
+        run: make clean && make test
