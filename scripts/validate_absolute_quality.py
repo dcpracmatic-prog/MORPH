@@ -549,6 +549,39 @@ def compute_reports(rows, refs, instances, out_dir: Path):
                 hits += 1
 
         ref = ref_by_stem.get(stem)
+
+        # Aggregation cross-check (guards against silent aggregation error).
+        # Within one instance/budget group the reference objective is a
+        # single constant, so the mean of the per-run quality percentages
+        # MUST equal the quality of the mean objective, and likewise for
+        # the gap. Both are computed independently here and compared; a
+        # mismatch fails loudly instead of being reported silently.
+        # This is an internal consistency check, not the external RR-PF
+        # oracle: no RR-PF oracle exists in this repository, so nothing
+        # here claims an independent re-computation of the reference.
+        objective_mean = sum(objs) / len(objs) if objs else None
+        quality_mean = sum(qualities) / len(qualities) if qualities else None
+        gap_mean = sum(gaps) / len(gaps) if gaps else None
+        quality_crosscheck = (
+            objective_mean / ref["objective"] * 100.0
+            if objective_mean is not None and ref and ref["objective"] else None
+        )
+        gap_crosscheck = (
+            (ref["objective"] - objective_mean) / ref["objective"] * 100.0
+            if objective_mean is not None and ref and ref["objective"] else None
+        )
+        for name, mean_value, crosscheck in (
+            ("quality", quality_mean, quality_crosscheck),
+            ("gap", gap_mean, gap_crosscheck),
+        ):
+            if mean_value is not None and crosscheck is not None:
+                if abs(mean_value - crosscheck) > 1e-6:
+                    raise RuntimeError(
+                        f"aggregation cross-check failed for {stem} "
+                        f"budget={budget}: mean-of-{name}={mean_value} "
+                        f"!= {name}-of-mean={crosscheck}"
+                    )
+
         summary.append({
             "instance": stem,
             "reference_type": ref["kind"] if ref else "",
@@ -557,13 +590,15 @@ def compute_reports(rows, refs, instances, out_dir: Path):
             "reference_objective": ref["objective"] if ref else "",
             "budget_ms": budget,
             "runs": len(rs),
-            "objective_mean": sum(objs) / len(objs) if objs else "",
+            "objective_mean": objective_mean if objective_mean is not None else "",
             "objective_best": max(objs) if objs else "",
             "objective_worst": min(objs) if objs else "",
-            "quality_mean_pct": sum(qualities) / len(qualities) if qualities else "",
+            "quality_mean_pct": quality_mean if quality_mean is not None else "",
+            "quality_crosscheck_pct": quality_crosscheck if quality_crosscheck is not None else "",
             "quality_best_pct": max(qualities) if qualities else "",
             "quality_worst_pct": min(qualities) if qualities else "",
-            "gap_mean_pct": sum(gaps) / len(gaps) if gaps else "",
+            "gap_mean_pct": gap_mean if gap_mean is not None else "",
+            "gap_crosscheck_pct": gap_crosscheck if gap_crosscheck is not None else "",
             "gap_best_pct": min(gaps) if gaps else "",
             "hit_reference_runs": hits,
             "hit_reference_pct": (100.0 * hits / len(rs)) if rs else "",
