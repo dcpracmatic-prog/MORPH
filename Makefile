@@ -15,6 +15,7 @@ test: all
 	$(CXX) $(CXXFLAGS) -o test_improve12_qoblib tests/test_improve12_qoblib.cpp
 	./test_improve12_v15
 	./test_improve12_qoblib
+	python3 -m unittest discover -s tests -p 'test_*.py'
 	bash ./scripts/smoke_test.sh
 	rm -f test_improve12_v15 test_improve12_qoblib
 
