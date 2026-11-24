@@ -27,12 +27,15 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _LIB_PATH = _REPO_ROOT / "libmorph.so"
 _API_SOURCE = _REPO_ROOT / "src" / "morph_api.cpp"
+_SOLVER_SOURCE = _REPO_ROOT / "src" / "morph_qoblib_solver.cpp"
 
 _METHODS = ("degree", "random", "local", "morph")
 
 
 def _ensure_library() -> Path:
-    if _LIB_PATH.exists() and _LIB_PATH.stat().st_mtime >= _API_SOURCE.stat().st_mtime:
+    sources = (_API_SOURCE, _SOLVER_SOURCE)  # libmorph.so is built from both
+    newest_source = max(src.stat().st_mtime for src in sources)
+    if _LIB_PATH.exists() and _LIB_PATH.stat().st_mtime >= newest_source:
         return _LIB_PATH
     print(f"[morph] building {_LIB_PATH.name} ...", file=sys.stderr)
     subprocess.run(["make", "libmorph"], cwd=_REPO_ROOT, check=True)

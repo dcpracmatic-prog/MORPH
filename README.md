@@ -90,7 +90,7 @@ The v1.5 residual-degree construction improved the synthetic Barabási–Albert 
 
 The QOBLIB validation showed rapid feasible MIS construction on real benchmark graphs. MORPH reached known optimal values on several instances and produced incumbents on some instances where CP-SAT had no incumbent within the same short wall-clock budget. This supports a low-latency heuristic hypothesis; it does not establish general superiority over CP-SAT.
 
-The DIMACS outcome claimed is exactly the measured run in `evidence/dimacs_mis/` (13 instances, 260 runs, all valid) — MORPH alone, no competing solver, no optimality claim.
+The DIMACS outcome is the measured run in `evidence/dimacs_mis/` — MORPH alone, no competing solver, no optimality claim. Under the complement convention at 1000 ms, MORPH reached the published ω on all five seeds for 15 of the 35 instances with exact ω, and fell below the published lower bound on five of the six instances that have only a bound. The ω values come from a third-party table and were not checked against the DIMACS originals.
 
 ## Reproducibility note
 

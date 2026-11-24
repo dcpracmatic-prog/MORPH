@@ -9,8 +9,13 @@ permissions:
   contents: read
 
 jobs:
-  python:
-    name: pytest (Python ${{ matrix.python-version }})
+  # Runs the repository's own test target: builds both C++ solvers and the
+  # shared library, runs the C++ improve12 regression tests, the Python unittest
+  # suite (DIMACS runner, complement script, validator, ctypes wrapper), and the
+  # smoke test over datasets/*.gph. There is no pyproject.toml or lean/ directory
+  # in this repository, so no pip-install or Lean build steps are run.
+  make-test:
+    name: make test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -23,22 +28,5 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install package with test extras
-        run: |
-          python -m pip install --upgrade pip
-          pip install ".[test]"
-
-      - name: Run pytest
-        run: pytest -q
-
-  lean:
-    name: lake build (Lean v4.14.0)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build Lean package
-        uses: leanprover/lean-action@v1
-        with:
-          lake-package-directory: lean
-          build: true
+      - name: Build and test
+        run: make test

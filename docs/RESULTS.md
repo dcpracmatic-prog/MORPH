@@ -27,20 +27,29 @@ Representative observations from that run:
 
 These observations justify the low-latency heuristic thesis, not a claim of universal solver dominance.
 
-## DIMACS (measured 2026-11-23)
+## DIMACS (measured 2026-11-24)
 
-13 instances, 5 seeds, budgets 10/50/100/1000 ms, 260 runs, all valid.
-Full raw rows, P10/P50/P90 summaries and provenance: `evidence/dimacs_mis/`.
+41 DIMACS clique-benchmark graphs, seeds 1–5, budgets 10/50/100/1000 ms,
+both conventions, 1,640 runs, all flagged valid by the solver (the solver's
+own check; no separate checker). Full per-instance table with ω and
+[min–max] over seeds: `evidence/dimacs_mis/COMBINED_TABLE.md`. Provenance
+and checksums: `evidence/dimacs_mis/SOURCES.md`.
 
-P50 MIS size at 100 ms: MANN_a9 3, brock200_1 6, brock200_2 10,
-brock400_1 6, c-fat200-1 18, c-fat200-5 3, c-fat500-1 40, hamming8-4 16,
-keller4 15, p_hat300-1 39, p_hat300-2 26, p_hat300-3 8, san200_0.7_1 7.
+Two conventions, reported side by side:
 
-Only p_hat300-1 varies across seeds (38 at 10 ms, 39 from 50 ms up).
-No budget from 10 ms to 1000 ms changes any other instance. The `.clq`
-files are clique-benchmark graphs used as-is as MIS instances, so
-published maximum-clique optima do not apply. No competing solver was
-run on DIMACS, so this supports no superiority claim. At the 10 ms
-budget the measured wall time sometimes exceeds the budget (first
-min-residual-degree pass runs to completion before the deadline is
-checked).
+- **complement** (MIS of the complement = clique number of the original):
+  comparable to published ω. At 1000 ms, 15 of 35 instances with exact ω reach
+  ω on all five seeds. Five instances whose published value is only a lower
+  bound come out below it (p_hat1000-1, p_hat1000-2, p_hat1000-3, p_hat500-3,
+  p_hat700-2).
+- **as-is** (MIS of the file's graph): a different quantity, not compared with ω.
+  Included because PR #2 and the QOBLIB MIS runs used this convention.
+
+Large gaps to ω exist on several families at 1000 ms, for example
+san200_0.9_1 52 vs 70, san400_0.7_1 23 vs 40, brock400_4 23 vs 33, san1000 10 vs 15.
+
+Only a few instances vary across seeds or budgets; see
+`evidence/dimacs_mis/README.md`. Budgets are deadlines for starting restarts,
+not hard caps: mean wall time is 10.9 ms at a 10 ms budget (worst instance
+mean 17.0 ms). No competing solver was run on DIMACS, so these results
+support no superiority claim.

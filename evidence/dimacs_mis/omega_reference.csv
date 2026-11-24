@@ -1,0 +1,42 @@
+instance,omega,exact,source
+MANN_a9,16,1,roars.dev npbench clique table (fetched 2026-11-24)
+MANN_a27,126,1,same
+MANN_a45,345,1,same
+brock200_1,21,1,same
+brock200_2,12,1,same
+brock200_3,15,1,same
+brock200_4,17,1,same
+brock400_1,27,1,same
+brock400_2,29,1,same
+brock400_3,31,1,same
+brock400_4,33,1,same
+brock800_1,23,1,same
+c-fat200-1,12,1,same
+c-fat200-2,24,1,same
+c-fat200-5,58,1,same
+c-fat500-1,14,1,same
+c-fat500-2,26,1,same
+c-fat500-5,64,1,same
+c-fat500-10,126,1,same
+hamming8-4,16,1,same
+hamming10-4,40,1,same
+johnson16-2-4,8,1,same
+keller4,11,1,same
+keller5,27,1,same
+p_hat300-1,8,1,same
+p_hat300-2,25,1,same
+p_hat300-3,36,1,same
+p_hat500-1,9,1,same
+p_hat500-2,36,1,same
+p_hat500-3,50,0,same (lower bound)
+p_hat700-1,11,1,same
+p_hat700-2,44,0,same (lower bound)
+p_hat700-3,62,0,same (lower bound)
+p_hat1000-1,10,0,same (lower bound)
+p_hat1000-2,46,0,same (lower bound)
+p_hat1000-3,68,0,same (lower bound)
+san200_0.7_1,30,1,same
+san200_0.9_1,70,1,same
+san400_0.5_1,13,1,same
+san400_0.7_1,40,1,same
+san1000,15,1,same
