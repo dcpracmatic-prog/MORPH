@@ -26,3 +26,21 @@ Representative observations from that run:
 - Large social/benchmark instances such as `socfb-haverford76` and `socfb-trinity100` also produced MORPH incumbents where CP-SAT did not within 1 s in the reported run.
 
 These observations justify the low-latency heuristic thesis, not a claim of universal solver dominance.
+
+## DIMACS (measured 2026-11-23)
+
+13 instances, 5 seeds, budgets 10/50/100/1000 ms, 260 runs, all valid.
+Full raw rows, P10/P50/P90 summaries and provenance: `evidence/dimacs_mis/`.
+
+P50 MIS size at 100 ms: MANN_a9 3, brock200_1 6, brock200_2 10,
+brock400_1 6, c-fat200-1 18, c-fat200-5 3, c-fat500-1 40, hamming8-4 16,
+keller4 15, p_hat300-1 39, p_hat300-2 26, p_hat300-3 8, san200_0.7_1 7.
+
+Only p_hat300-1 varies across seeds (38 at 10 ms, 39 from 50 ms up).
+No budget from 10 ms to 1000 ms changes any other instance. The `.clq`
+files are clique-benchmark graphs used as-is as MIS instances, so
+published maximum-clique optima do not apply. No competing solver was
+run on DIMACS, so this supports no superiority claim. At the 10 ms
+budget the measured wall time sometimes exceeds the budget (first
+min-residual-degree pass runs to completion before the deadline is
+checked).

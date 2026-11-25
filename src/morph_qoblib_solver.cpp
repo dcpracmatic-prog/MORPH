@@ -1,4 +1,15 @@
 
+// MORPH QOBLIB solver — budgeted MIS solver used for the QOBLIB
+// head-to-head runs (see scripts/run_qoblib_morph_cpsat.py).
+//
+// Methods: `degree` (degree-greedy), `random` (randomized degree-greedy),
+// `local` (random greedy + 1-to-2 improvement), `morph` (time-budgeted
+// restarts of min-residual-degree + 1-to-2 improvement).
+// Usage: morph_qoblib_solver <graph> <method> <budget_ms> <seed>
+// Output (one CSV line): n,edges,objective,wall_ms,valid
+// This file was already legible; only this header and the usage string
+// (which wrongly said `morph_v15_fair`) were fixed. Logic untouched.
+
 #include <bits/stdc++.h>
 
 using namespace std;
@@ -455,7 +466,7 @@ int main(
     if (argc < 5) {
 
         cerr
-            << "usage: morph_v15_fair "
+            << "usage: morph_qoblib_solver "
             << "<graph> <method> <budget_ms> <seed>\n";
 
         return 2;

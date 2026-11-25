@@ -3,6 +3,7 @@
 __pycache__/
 morph_v15
 morph_qoblib_solver
+libmorph.so
 src/morph_v15
 src/morph_qoblib_solver
 results/
