@@ -6,7 +6,13 @@ The input directory must contain at least ten DIMACS edge-format files:
     e <one_based_vertex_u> <one_based_vertex_v>
 
 The solver binary is built from src/morph_qoblib_solver.cpp. The script records
-raw per-seed results and P10/P50/P90 summaries; it does not claim optimality.
+raw per-seed results, P10/P50/P90 percentiles, and the min/max range over the
+seeds. It does not claim optimality.
+
+Convention: pass --convention complement when --dimacs-dir holds complemented
+graphs written by scripts/complement_dimacs.py. Then the MIS size equals the
+clique number of the original DIMACS graph. The label is recorded in every
+output so as-is and complement runs cannot be mixed up.
 """
 from __future__ import annotations
 
@@ -73,7 +79,16 @@ def percentile(values: list[float], pct: float) -> float:
     return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
 
 
-def run_one(binary: Path, graph: Path, budget_ms: int, seed: int) -> dict:
+def median_interval_coverage(n_seeds: int) -> float:
+    """Coverage of [min, max] for the population median under iid sampling.
+
+    For continuous outcomes, P(min <= median <= max) = 1 - 2 * (1/2)**n.
+    This assumes seeds are an iid sample, which is only an approximation.
+    """
+    return 1.0 - 2.0 * (0.5 ** n_seeds)
+
+
+def run_one(binary: Path, graph: Path, budget_ms: int, seed: int, convention: str) -> dict:
     completed = subprocess.run(
         [str(binary), str(graph), "morph", str(budget_ms), str(seed)],
         check=True, capture_output=True, text=True,
@@ -85,8 +100,8 @@ def run_one(binary: Path, graph: Path, budget_ms: int, seed: int) -> dict:
     if valid != "1":
         raise RuntimeError(f"solver returned an invalid independent set for {graph}, seed={seed}")
     return {
-        "instance": graph.stem, "file": graph.name, "n": int(n),
-        "edges": int(edges), "budget_ms": budget_ms, "seed": seed,
+        "instance": graph.stem, "file": graph.name, "convention": convention,
+        "n": int(n), "edges": int(edges), "budget_ms": budget_ms, "seed": seed,
         "objective": int(objective), "wall_ms": float(wall_ms), "valid": int(valid),
     }
 
@@ -98,6 +113,11 @@ def main() -> int:
     parser.add_argument("--out", default=Path("results/dimacs_mis"), type=Path)
     parser.add_argument("--budget-ms", type=int, default=100)
     parser.add_argument("--seeds", default="1,2,3,4,5")
+    parser.add_argument(
+        "--convention", choices=["as-is", "complement"], default="as-is",
+        help="as-is: MIS of the file's graph. complement: the files are complements "
+             "(MIS size = clique number of the original DIMACS graph).",
+    )
     args = parser.parse_args()
 
     if args.budget_ms < 1:
@@ -122,7 +142,8 @@ def main() -> int:
     rows = []
     for graph in graphs:
         for seed in seeds:
-            rows.append(run_one(args.solver.resolve(), graph.resolve(), args.budget_ms, seed))
+            rows.append(run_one(args.solver.resolve(), graph.resolve(),
+                                args.budget_ms, seed, args.convention))
 
     args.out.mkdir(parents=True, exist_ok=True)
     raw_path = args.out / "dimacs_mis_runs.csv"
@@ -138,12 +159,15 @@ def main() -> int:
         times = [float(row["wall_ms"]) for row in group]
         n, edges = metadata[graph]
         summaries.append({
+            "convention": args.convention,
             "instance": graph.stem, "n": n, "edges": edges,
             "budget_ms": args.budget_ms, "runs": len(group),
             "objective_mean": mean(objectives),
+            "objective_min": min(objectives),
             "objective_p10": percentile(objectives, 10),
             "objective_p50": percentile(objectives, 50),
             "objective_p90": percentile(objectives, 90),
+            "objective_max": max(objectives),
             "wall_ms_mean": mean(times),
             "wall_ms_p10": percentile(times, 10),
             "wall_ms_p50": percentile(times, 50),
@@ -163,18 +187,23 @@ def main() -> int:
         f"- Instances: {len(graphs)}",
         f"- Seeds per instance: {len(seeds)} ({', '.join(map(str, seeds))})",
         f"- Budget: {args.budget_ms} ms",
-        f"- Solver: MORPH QOBLIB solver",
+        f"- Convention: {args.convention}",
+        "- Solver: MORPH QOBLIB solver",
         "- Reference optimum/best-known values are not inferred by this runner.",
         "- P10/P50/P90 use linear interpolation across the observed seed results.",
+        f"- Min/max over {len(seeds)} seeds: [min, max] covers the population median with "
+        f"probability {median_interval_coverage(len(seeds)):.4f} under iid sampling "
+        "(an approximation; seeds are not a random sample of the solver's behaviour).",
         "",
-        "| Instance | n | Edges | Mean MIS | P10 | P50 | P90 | Mean ms | All valid |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|:---:|",
+        "| Instance | n | Edges | Mean MIS | Min | P10 | P50 | P90 | Max | Mean ms | All valid |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---:|",
     ]
     for row in summaries:
         report.append(
             f"| {row['instance']} | {row['n']} | {row['edges']} | "
-            f"{row['objective_mean']:.2f} | {row['objective_p10']:.2f} | "
-            f"{row['objective_p50']:.2f} | {row['objective_p90']:.2f} | "
+            f"{row['objective_mean']:.2f} | {row['objective_min']:.0f} | "
+            f"{row['objective_p10']:.2f} | {row['objective_p50']:.2f} | "
+            f"{row['objective_p90']:.2f} | {row['objective_max']:.0f} | "
             f"{row['wall_ms_mean']:.3f} | {'yes' if row['all_valid'] else 'NO'} |"
         )
     (args.out / "DIMACS_MIS_REPORT.md").write_text("\n".join(report) + "\n", encoding="utf-8")
