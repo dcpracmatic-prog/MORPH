@@ -16,8 +16,8 @@ five seeds. This replaces the earlier 13-instance run (kept in
     clique number of the DIMACS graph and is the one comparable to published
     ω. Complements are written by `scripts/complement_dimacs.py`; every file's
     edge count was checked against n(n−1)/2 − m.
-  - Which convention should headline is an open choice; both are reported
-    and neither is presented as the main result here.
+  - **Headline convention: complement.** Both are reported, and the complement
+    values are the ones compared with ω below.
 - **Solver:** `morph_qoblib_solver`, method `morph`, built from the
   branch source with `-O3 -std=c++17 -DNDEBUG`.
 - **Budgets:** 10, 50, 100, 1000 ms. **Seeds:** 1–5.

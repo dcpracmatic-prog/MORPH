@@ -58,6 +58,7 @@ import subprocess
 import sys
 import time
 from collections import defaultdict
+from fractions import Fraction
 from pathlib import Path
 
 
@@ -254,6 +255,37 @@ def validate_solution(n, edges, objective, vertices):
                 break
 
     return len(errors) == 0, errors
+
+
+def exact_quality_and_gap(morph_obj, ref_obj):
+    """
+    Exact rational recomputation of quality_pct and gap_pct.
+
+    Objectives are integers in practice; Fraction(float) is exact for any
+    finite float, so no rounding enters here. Returns (quality, gap) as floats.
+    """
+    m = Fraction(morph_obj)
+    r = Fraction(ref_obj)
+    if r == 0:
+        raise ZeroDivisionError("reference objective is zero")
+    quality = m / r * 100
+    gap = (r - m) / r * 100
+    return float(quality), float(gap)
+
+
+def guard_quality_and_gap(morph_obj, ref_obj, quality, gap, tol=1e-9):
+    """
+    Check the float quality/gap against the exact recomputation.
+    Raises RuntimeError on any disagreement beyond a relative tolerance.
+    """
+    eq, eg = exact_quality_and_gap(morph_obj, ref_obj)
+    for name, got, want in (("quality_pct", quality, eq), ("gap_pct", gap, eg)):
+        if not math.isfinite(got) or abs(got - want) > tol * max(1.0, abs(want)):
+            raise RuntimeError(
+                f"{name} guard failed: float={got!r} exact={want!r} "
+                f"(morph={morph_obj!r}, reference={ref_obj!r})"
+            )
+    return eq, eg
 
 
 def discover_references(mis_root: Path):
@@ -472,6 +504,8 @@ def compute_reports(rows, refs, instances, out_dir: Path):
             morph_obj = r["_objective"]
             quality = (morph_obj / ref_obj * 100.0) if ref_obj else math.nan
             gap = ((ref_obj - morph_obj) / ref_obj * 100.0) if ref_obj else math.nan
+            if ref_obj:
+                quality, gap = guard_quality_and_gap(morph_obj, ref_obj, quality, gap)
 
             if ref["kind"] == "OPTIMAL":
                 status = "HIT_OPTIMUM" if morph_obj >= ref_obj else "BELOW_OPTIMUM"

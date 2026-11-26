@@ -21,7 +21,7 @@ p_hat1000-1/2/3; san200_0.7_1, san200_0.9_1, san400_0.5_1, san400_0.7_1, san1000
 
 ## Convention
 
-Both conventions are reported; neither is the headline.
+Both conventions are reported; complement is the headline (it is the clique number, comparable to ω).
 
 - **as-is:** the `.clq` edge list is read unchanged and treated as an MIS instance.
   This matches the convention of the earlier PR and of the QOBLIB MIS run in this

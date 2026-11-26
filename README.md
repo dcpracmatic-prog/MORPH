@@ -72,11 +72,13 @@ python scripts/run_dimacs_mis.py \
 
 The runner refuses fewer than ten input instances or fewer than five distinct seeds. It validates graph dimensions and edge counts, checks the solver's independent-set validity flag, and writes per-seed CSV, per-instance P10/P50/P90 CSV, and a Markdown report. The percentiles describe variability across the specified seeds; they are not confidence intervals and do not establish optimality. Downloaded DIMACS data must be retained with its original source/license information.
 
-Measured DIMACS results are packaged in `evidence/dimacs_mis/` (13 instances, 5 seeds, budgets 10/50/100/1000 ms, 260 runs, all valid; run 2026-11-23). At 100 ms the P50 sizes are: MANN_a9 3, brock200_1 6, brock200_2 10, brock400_1 6, c-fat200-1 18, c-fat200-5 3, c-fat500-1 40, hamming8-4 16, keller4 15, p_hat300-1 39, p_hat300-2 26, p_hat300-3 8, san200_0.7_1 7. Only p_hat300-1 varies across seeds (38 at 10 ms, 39 from 50 ms up); every other instance is identical on all seeds at all budgets. The `.clq` files are clique-benchmark graphs used as-is as MIS instances, so published maximum-clique optima do not apply to these sizes. There is no CP-SAT column for DIMACS yet, so this run supports no superiority claim. The budget is a deadline for new restarts, not a hard cap: at the 10 ms budget the measured wall time sometimes reaches ~30–65 ms, because the first min-residual-degree pass runs to completion first. See `evidence/dimacs_mis/README.md` for the full statement.
+Measured DIMACS results are in `evidence/dimacs_mis/`: 41 DIMACS clique-benchmark graphs, five seeds (1–5), budgets 10/50/100/1000 ms, and two conventions (1640 runs). Every run reported `valid=1`, which is the solver's own check; no independent checker was run. The headline convention is **complement**: the MIS of the complement is the clique number of the DIMACS graph, which is the quantity the published ω refers to. The as-is MIS of the same files measures a different quantity and is reported alongside it. Spread is shown as P10/P50/P90 and min–max over the five seeds; these are descriptive, not confidence intervals. The budget is a deadline for starting new restarts, not a hard cap: mean wall time across the 82 instance×convention rows is 10.9 ms at a 10 ms budget and 101.0 ms at 100 ms. There is no CP-SAT column for DIMACS, so this run supports no superiority claim. The ω values come from a third-party table and were not checked against the DIMACS originals. See `evidence/dimacs_mis/README.md` for the full statement.
 
 ## Absolute quality
 
 The absolute-quality validator parses official QOBLIB references and distinguishes `OPTIMAL` from `BEST_KNOWN`. Matching a `BEST_KNOWN` value is not an independent proof of optimality.
+
+`quality_pct` and `gap_pct` are computed in floating point and also recomputed exactly with rational arithmetic (`fractions.Fraction`). The run aborts if the float values differ from the exact ones by more than 1e-9 relative. This guards the reported percentages; it does not validate MORPH's solution sets, which the validator checks separately against the graph.
 
 ```bash
 python scripts/validate_absolute_quality.py \
@@ -90,7 +92,7 @@ The v1.5 residual-degree construction improved the synthetic Barabási–Albert 
 
 The QOBLIB validation showed rapid feasible MIS construction on real benchmark graphs. MORPH reached known optimal values on several instances and produced incumbents on some instances where CP-SAT had no incumbent within the same short wall-clock budget. This supports a low-latency heuristic hypothesis; it does not establish general superiority over CP-SAT.
 
-The DIMACS outcome is the measured run in `evidence/dimacs_mis/` — MORPH alone, no competing solver, no optimality claim. Under the complement convention at 1000 ms, MORPH reached the published ω on all five seeds for 15 of the 35 instances with exact ω, and fell below the published lower bound on five of the six instances that have only a bound. The ω values come from a third-party table and were not checked against the DIMACS originals.
+The DIMACS outcome is the measured run in `evidence/dimacs_mis/` — MORPH alone, no competing solver, no optimality claim. Under the complement convention at 1000 ms, MORPH reached the published ω on all five seeds for 15 of the 35 instances with exact ω. The other 20 never reached ω on any seed, and none exceeded it. On the six instances with only a published lower bound, the P50 is below that bound on five and equal to it on p_hat700-3 (62).
 
 ## Reproducibility note
 
