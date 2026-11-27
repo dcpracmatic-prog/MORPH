@@ -1,67 +1,106 @@
-# MORPH v1.5
+# MORPH
 
+**A low-latency heuristic for the Maximum Independent Set (MIS) problem.**
 
- [![Tests](https://github.com/dcpracmatic-prog/MORPH/actions/workflows/ci.yml/badge.svg)](https://github.com/dcpracmatic-prog/MORPH/actions/workflows/ci.yml)
+[![CI](https://github.com/dcpracmatic-prog/MORPH/actions/workflows/ci.yml/badge.svg)](https://github.com/dcpracmatic-prog/MORPH/actions/workflows/ci.yml)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 
+MORPH builds large feasible independent sets quickly using a residual-degree construction, compact CSR graph storage, and a lazy min-heap. It is designed for time-limited graph optimization—not as an exact solver or a universal replacement for CP-SAT.
 
-**Maximum Independent Set — Low-Latency Heuristic Solver**
-MORPH v1.5 is a heuristic solver for the Maximum Independent Set (MIS) problem. Its core construction repeatedly selects a currently active vertex with minimum residual degree, adds that vertex to the independent set, and removes it and its active neighbors. The implementation uses CSR adjacency storage and a lazy min-heap.
+## At a glance
 
-This repository is intentionally focused: source, reproducibility scripts, small real datasets, and benchmark evidence. It does not claim a general-purpose exact-solver replacement.
+- **Problem:** Maximum Independent Set (MIS)
+- **Implementation:** C++17, with an optional Python `ctypes` wrapper
+- **Approach:** repeatedly choose an active vertex with minimum residual degree, add it to the solution, then remove it and its active neighbors
+- **Validation:** returned sets are checked for independence in C++; the Python wrapper checks them again
+- **Benchmarks:** QOBLIB comparisons, DIMACS experiments, and synthetic Barabási–Albert scaling results
 
-## What is here
+An independent set contains no pair of adjacent vertices. MORPH returns a feasible set; its size is a heuristic result and is not guaranteed to be optimal.
 
-- `src/morph_v15.cpp` — scalable v1.5 implementation and synthetic BA scaling harness.
-- `src/morph_qoblib_solver.cpp` — budgeted MORPH solver used for QOBLIB head-to-head runs.
-- `src/morph_api.cpp` — C API (`morph_solve`) for the Python wrapper; the solver itself is untouched.
-- `python/morph.py` — Python wrapper (ctypes, same pattern as HBAG): builds `libmorph.so` on first import and returns the independent set itself, re-checked in Python. Run `python -m morph` from the repo root for a demo on the three small datasets.
-- `scripts/run_qoblib_morph_cpsat.py` — MORPH vs OR-Tools CP-SAT benchmark over discovered QOBLIB MIS instances.
-- `scripts/run_dimacs_mis.py` — DIMACS edge-format MIS benchmark with at least ten instances, five or more seeds, raw rows, and P10/P50/P90 summaries.
-- `scripts/validate_absolute_quality.py` — validates MORPH results against official QOBLIB `.opt.sol` / `.bst.sol` references. Its per-instance/budget aggregates carry an internal cross-check (mean of percentages vs percentage of the mean); a mismatch fails loudly. No external RR-PF oracle is wired in — none exists in this repository.
-- `datasets/` — Karate Club, College Football, and Kangaroo examples used during development.
-- `evidence/` — scaling evidence and the earlier six-instance raw CSV.
+## Quick start
 
-## Build
+### Requirements
+
+- A Linux-like environment with `g++` (or another compatible C++17 compiler) and `make`
+- Python 3.10 or newer for the test suite and Python wrapper
+
+Build the command-line solvers and run the smoke test:
 
 ```bash
-make clean
+git clone https://github.com/dcpracmatic-prog/MORPH.git
+cd MORPH
 make
 bash scripts/smoke_test.sh
 ```
 
-## Python wrapper
+Run the full project test target:
+
+```bash
+make test
+```
+
+The smoke test runs the solver on the bundled `.gph` examples and checks its validity flag. `make test` also runs the C++ and Python tests.
+
+## Use from Python
+
+Build the shared library and run the included example:
 
 ```bash
 make libmorph
 PYTHONPATH=python python -m morph
 ```
 
-`python/morph.py` loads `libmorph.so` through ctypes (building it first
-if needed) and exposes `solve_mis(path, method="morph", budget_ms=100,
-seed=1)`, which returns the independent set itself — size, vertices,
-and validity checked both in C++ and again in Python.
+Or run your own script from the repository root with `PYTHONPATH=python python your_script.py`:
 
-## QOBLIB benchmark
+```python
+from morph import solve_mis
 
-In Google Colab or another Linux environment with Git and Python:
+result = solve_mis(
+    "datasets/karate.gph",
+    method="morph",
+    budget_ms=100,
+    seed=1,
+)
+
+print(result["size"])
+print(result["vertices"])       # zero-based vertex IDs
+print(result["valid_python"])   # independent-set check in Python
+```
+
+`solve_mis` accepts DIMACS edge-format input (`p edge n m` and `e u v` records). Available methods are `degree`, `random`, `local`, and `morph`. The time budget applies to `morph`; deterministic baselines do not use it. Small-budget `morph` runs can vary because the search also depends on wall-clock time.
+
+## Benchmarks and evidence
+
+Benchmark results are reported with their protocol and limitations; they should not be read as proof of optimality or general superiority.
+
+### QOBLIB
+
+Compare MORPH with OR-Tools CP-SAT on discovered QOBLIB MIS instances:
 
 ```bash
 python scripts/run_qoblib_morph_cpsat.py \
-  --qoblib /content/QOBLIB \
+  --qoblib /path/to/QOBLIB \
   --out results/qoblib_morph_vs_cpsat.csv \
   --solver ./morph_qoblib_solver
 ```
 
-The default protocol is all discovered QOBLIB MIS graphs, budgets `10, 50, 100, 1000 ms`, five seeds, and two solvers. For the 50-instance QOBLIB set used in the validation run, that is 2,000 solver executions.
+This benchmark requires Git, Python with `pip`, and OR-Tools. The runner attempts to install OR-Tools if it is missing and clones QOBLIB if the supplied path does not exist. The default protocol uses all discovered instances, budgets of 10, 50, 100, and 1000 ms, five seeds, and both solvers. CP-SAT uses one worker and the same wall-clock limit. Runs without a feasible incumbent are recorded explicitly rather than assigned an artificial objective of zero.
 
-CP-SAT is configured with `num_search_workers=1` and the same wall-clock limit. A run with no feasible incumbent is recorded as `has_incumbent=0` and does not receive an artificial objective of zero.
-
-## DIMACS MIS benchmark
-
-Place at least ten DIMACS edge-format instances in a directory. Supported suffixes are `.clq`, `.dimacs`, `.graph`, `.txt`, and `.col`. Each file must use the standard `p edge n m` problem line and `e u v` edge records. Curated instance families may include brock, C-fat, keller, and p_hat; this repository does not claim to vendor those benchmark files.
+Validate results against the official QOBLIB `.opt.sol` and `.bst.sol` references:
 
 ```bash
-make
+python scripts/validate_absolute_quality.py \
+  --results results/qoblib_morph_vs_cpsat.csv \
+  --out results/absolute_quality
+```
+
+The validator distinguishes `OPTIMAL` from `BEST_KNOWN`: matching a best-known value is not an independent proof of optimality. It is Colab-oriented and creates `/content/morph_qoblib_absolute` by default. **Use a disposable QOBLIB checkout:** when a Git checkout is present at its QOBLIB path, the script attempts `git fetch` and `git reset --hard origin/main`, potentially discarding local changes. Its independent set checks apply to the reference solutions; the benchmark CSV contains objectives, not MORPH vertex lists.
+
+### DIMACS
+
+The runner accepts DIMACS edge-format instances with a `p edge n m` header and `e u v` edges. It requires at least ten instances and five distinct seeds, and writes per-seed results, per-instance P10/P50/P90 summaries, and a Markdown report.
+
+```bash
 python scripts/run_dimacs_mis.py \
   --dimacs-dir /path/to/dimacs-instances \
   --solver ./morph_qoblib_solver \
@@ -70,40 +109,32 @@ python scripts/run_dimacs_mis.py \
   --out results/dimacs_mis
 ```
 
-The runner refuses fewer than ten input instances or fewer than five distinct seeds. It validates graph dimensions and edge counts, checks the solver's independent-set validity flag, and writes per-seed CSV, per-instance P10/P50/P90 CSV, and a Markdown report. The percentiles describe variability across the specified seeds; they are not confidence intervals and do not establish optimality. Downloaded DIMACS data must be retained with its original source/license information.
+The recorded experiment and its interpretation are in [`evidence/dimacs_mis/README.md`](evidence/dimacs_mis/README.md). It covers 41 DIMACS clique-benchmark graphs, five seeds, four budgets, and both the original and complement graph conventions. The complement convention is relevant when comparing MIS results with published clique numbers. The run has no competing solver column, so it does not support a comparative-superiority claim. Percentiles over five seeds are descriptive, not confidence intervals; the published reference values were not independently checked against the original DIMACS files.
 
-Measured DIMACS results are in `evidence/dimacs_mis/`: 41 DIMACS clique-benchmark graphs, five seeds (1–5), budgets 10/50/100/1000 ms, and two conventions (1640 runs). Every run reported `valid=1`, which is the solver's own check; no independent checker was run. The headline convention is **complement**: the MIS of the complement is the clique number of the DIMACS graph, which is the quantity the published ω refers to. The as-is MIS of the same files measures a different quantity and is reported alongside it. Spread is shown as P10/P50/P90 and min–max over the five seeds; these are descriptive, not confidence intervals. The budget is a deadline for starting new restarts, not a hard cap: mean wall time across the 82 instance×convention rows is 10.9 ms at a 10 ms budget and 101.0 ms at 100 ms. There is no CP-SAT column for DIMACS, so this run supports no superiority claim. The ω values come from a third-party table and were not checked against the DIMACS originals. See `evidence/dimacs_mis/README.md` for the full statement.
+### Scaling experiment
 
-## Absolute quality
+The v1.5 residual-degree construction improved solution quality by approximately 7.2–7.5% over degree-greedy in the repository's synthetic Barabási–Albert stress tests across 32,768 to 1,048,576 vertices. These are synthetic comparisons, not optimality results. See [`evidence/`](evidence/) for the available records.
 
-The absolute-quality validator parses official QOBLIB references and distinguishes `OPTIMAL` from `BEST_KNOWN`. Matching a `BEST_KNOWN` value is not an independent proof of optimality.
+## Repository map
 
-`quality_pct` and `gap_pct` are computed in floating point and also recomputed exactly with rational arithmetic (`fractions.Fraction`). The run aborts if the float values differ from the exact ones by more than 1e-9 relative. This guards the reported percentages; it does not validate MORPH's solution sets, which the validator checks separately against the graph.
+| Path | Purpose |
+| --- | --- |
+| `src/morph_v15.cpp` | Scalable v1.5 implementation and synthetic scaling harness |
+| `src/morph_qoblib_solver.cpp` | Budgeted solver used by benchmark scripts |
+| `src/morph_api.cpp` | C API used to build the Python shared library |
+| `python/morph.py` | Python wrapper and example entry point |
+| `scripts/` | Benchmark, validation, and smoke-test scripts |
+| `tests/` | C++ and Python tests |
+| `datasets/` | Small graph examples used in development and smoke tests |
+| `evidence/` | Recorded benchmark evidence and supporting reports |
+| `docs/` | Validation notes and project results |
 
-```bash
-python scripts/validate_absolute_quality.py \
-  --results results/qoblib_morph_vs_cpsat.csv \
-  --out results/absolute_quality
-```
+## Reproducibility and limitations
 
-## Current evidence
+Wall-clock budgets are not equivalent to equal CPU-cycle budgets. Record the hardware, compiler, OR-Tools version, solver settings, seed, and budget when producing new measurements. The MORPH search budget is a deadline for starting new restarts, not a strict cap on total process wall time. Benchmark results also depend on the graph convention: MIS on an input graph and MIS on its complement are different problems.
 
-The v1.5 residual-degree construction improved the synthetic Barabási–Albert stress results by roughly 7.2–7.5% over degree-greedy across 32,768 to 1,048,576 vertices. These are synthetic quality comparisons, not optimality claims.
-
-The QOBLIB validation showed rapid feasible MIS construction on real benchmark graphs. MORPH reached known optimal values on several instances and produced incumbents on some instances where CP-SAT had no incumbent within the same short wall-clock budget. This supports a low-latency heuristic hypothesis; it does not establish general superiority over CP-SAT.
-
-The DIMACS outcome is the measured run in `evidence/dimacs_mis/` — MORPH alone, no competing solver, no optimality claim. Under the complement convention at 1000 ms, MORPH reached the published ω on all five seeds for 15 of the 35 instances with exact ω. The other 20 never reached ω on any seed, and none exceeded it. On the six instances with only a published lower bound, the P50 is below that bound on five and equal to it on p_hat700-3 (62).
-
-## Reproducibility note
-
-Wall-clock equality is not equal CPU-cycle equality. The CP-SAT baseline is deliberately single-worker to keep the comparison controlled. Hardware, compiler, OR-Tools version, seed, and budget should be recorded with any new benchmark.
-
-## Scope
-
-MORPH is currently best described as a low-latency combinatorial heuristic for MIS. Claims of exactness, exponential speedups, quantum resistance, or universal superiority are outside the evidence in this repository.
+MORPH is a low-latency heuristic for MIS. The repository does **not** establish exactness, exponential speedups, quantum resistance, or universal superiority over other solvers.
 
 ## License
 
-MORPH is licensed under the GNU General Public License v3.0.
-
-See [`LICENSE`](LICENSE) for the full license text.
+MORPH is distributed under the [GNU General Public License v3.0](LICENSE).
